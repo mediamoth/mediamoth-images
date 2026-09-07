@@ -43,6 +43,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Check runner disk capacity
+        run: scripts/check-disk.sh
+
       - name: Load pinned image inputs
         run: |
           set -a
@@ -103,9 +106,6 @@ jobs:
           provenance: mode=max
           cache-from: type=gha,scope=chapter-ml
           cache-to: type=gha,mode=max,scope=chapter-ml,ignore-error=true
-
-      - name: Verify published image
-        run: scripts/verify-image.sh "$IMAGE@${{ steps.build.outputs.digest }}"
 
       - name: Scan image
         uses: aquasecurity/trivy-action@v0.36.0

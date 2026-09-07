@@ -10,10 +10,15 @@ permissions:
 
 jobs:
   chapter-ml:
-    runs-on: ubuntu-latest
+    # The CUDA runtime is several gigabytes. Building on our runner avoids the
+    # constrained hosted-runner filesystem and lets the BuildKit cache persist.
+    runs-on: self-hosted
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
+
+      - name: Check runner disk capacity
+        run: scripts/check-disk.sh
 
       - name: Load pinned image inputs
         run: |
@@ -33,14 +38,9 @@ jobs:
         uses: docker/build-push-action@v7
         with:
           context: chapter-ml
-          load: true
-          tags: mediamoth/chapter-ml:ci
           build-args: |
             PYTHON_IMAGE=${{ env.PYTHON_IMAGE }}
             CDML_REPOSITORY=${{ env.CDML_REPOSITORY }}
             CDML_REVISION=${{ env.CDML_REVISION }}
           cache-from: type=gha,scope=chapter-ml
           cache-to: type=gha,mode=max,scope=chapter-ml
-
-      - name: Verify chapter ML tools
-        run: scripts/verify-image.sh mediamoth/chapter-ml:ci

@@ -49,7 +49,8 @@ Dockerfile structure.
 ## Release process
 
 1. Change an image Dockerfile or `versions.env`.
-2. Open a pull request; CI builds the affected image and verifies its tools.
+2. Open a pull request; CI builds the affected image and verifies its tools
+   during the build, without importing a second copy into the Docker daemon.
 3. Merge to `main` and dispatch **Publish image** with an immutable version.
 4. Record the emitted digest in the consuming service Dockerfile.
 
