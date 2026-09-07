@@ -28,6 +28,8 @@ RUN --mount=type=cache,target=/root/.cache/pip \
     python -m pip install --no-cache-dir \
       "git+${CDML_REPOSITORY}@${CDML_REVISION}" \
     && command -v cdml \
+    && cdml --help >/dev/null \
+    && ffmpeg -version >/dev/null \
     && python -c 'import torch; print(torch.__version__)'
 
 WORKDIR /app
