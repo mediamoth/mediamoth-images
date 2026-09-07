@@ -1,0 +1,127 @@
+name: Publish Image
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Immutable image version, for example 1.0.0
+        required: true
+        type: string
+      registry:
+        description: Registry host[:port], without a scheme
+        required: true
+        default: ghcr.io
+        type: string
+      namespace:
+        description: Registry namespace
+        required: true
+        default: mediamoth
+        type: string
+      insecure_registry:
+        description: Set only for a trusted HTTP-only registry
+        required: true
+        default: false
+        type: boolean
+
+permissions:
+  contents: read
+  packages: write
+  id-token: write
+  attestations: write
+
+jobs:
+  chapter-ml:
+    runs-on: self-hosted
+    timeout-minutes: 60
+    env:
+      REGISTRY: ${{ inputs.registry }}
+      NAMESPACE: ${{ inputs.namespace }}
+      IMAGE: ${{ inputs.registry }}/${{ inputs.namespace }}/chapter-ml
+      REGISTRY_USERNAME: ${{ secrets.DOCKER_REGISTRY_USERNAME }}
+      REGISTRY_PASSWORD: ${{ secrets.DOCKER_REGISTRY_PASSWORD }}
+      TRIVY_INSECURE: ${{ inputs.insecure_registry }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load pinned image inputs
+        run: |
+          set -a
+          . ./versions.env
+          set +a
+          {
+            echo "PYTHON_IMAGE=$PYTHON_IMAGE"
+            echo "CDML_REPOSITORY=$CDML_REPOSITORY"
+            echo "CDML_REVISION=$CDML_REVISION"
+          } >> "$GITHUB_ENV"
+
+      - name: Validate release inputs
+        run: |
+          case "$REGISTRY" in
+            http://*|https://*|*/*|'')
+              echo 'Registry must be a host[:port] without a scheme or path.' >&2
+              exit 1
+              ;;
+          esac
+          case "${{ inputs.version }}" in
+            *[!0-9A-Za-z._-]*|'')
+              echo 'Version may contain only letters, digits, dots, underscores, and hyphens.' >&2
+              exit 1
+              ;;
+          esac
+
+      - name: Authenticate to GHCR
+        if: env.REGISTRY == 'ghcr.io'
+        run: echo '${{ github.token }}' | docker login ghcr.io --username '${{ github.actor }}' --password-stdin
+
+      - name: Authenticate to private registry
+        if: env.REGISTRY != 'ghcr.io' && env.REGISTRY_USERNAME != ''
+        run: echo "$REGISTRY_PASSWORD" | docker login "$REGISTRY" --username "$REGISTRY_USERNAME" --password-stdin
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+        with:
+          driver-opts: network=host
+          buildkitd-config-inline: |
+            [registry."${{ env.REGISTRY }}"]
+              http = ${{ inputs.insecure_registry }}
+
+      - name: Build and push chapter ML image
+        id: build
+        uses: docker/build-push-action@v7
+        with:
+          context: chapter-ml
+          push: true
+          platforms: linux/amd64
+          tags: |
+            ${{ env.IMAGE }}:${{ inputs.version }}
+            ${{ env.IMAGE }}:sha-${{ github.sha }}
+          build-args: |
+            PYTHON_IMAGE=${{ env.PYTHON_IMAGE }}
+            CDML_REPOSITORY=${{ env.CDML_REPOSITORY }}
+            CDML_REVISION=${{ env.CDML_REVISION }}
+          sbom: true
+          provenance: mode=max
+          cache-from: type=gha,scope=chapter-ml
+          cache-to: type=gha,mode=max,scope=chapter-ml,ignore-error=true
+
+      - name: Verify published image
+        run: scripts/verify-image.sh "$IMAGE@${{ steps.build.outputs.digest }}"
+
+      - name: Scan image
+        uses: aquasecurity/trivy-action@v0.36.0
+        with:
+          image-ref: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
+          format: table
+          exit-code: '1'
+          ignore-unfixed: true
+          severity: HIGH,CRITICAL
+
+      - name: Sign image digest
+        uses: sigstore/cosign-installer@v3.10.0
+        with:
+          cosign-release: v2.6.0
+
+      - run: cosign sign --yes "$IMAGE@${{ steps.build.outputs.digest }}"
+
+      - name: Report digest
+        run: echo "Published $IMAGE@${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"

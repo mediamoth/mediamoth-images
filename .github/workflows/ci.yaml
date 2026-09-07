@@ -1,0 +1,46 @@
+name: Verify Images
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  chapter-ml:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Load pinned image inputs
+        run: |
+          set -a
+          . ./versions.env
+          set +a
+          {
+            echo "PYTHON_IMAGE=$PYTHON_IMAGE"
+            echo "CDML_REPOSITORY=$CDML_REPOSITORY"
+            echo "CDML_REVISION=$CDML_REVISION"
+          } >> "$GITHUB_ENV"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Build chapter ML image
+        uses: docker/build-push-action@v7
+        with:
+          context: chapter-ml
+          load: true
+          tags: mediamoth/chapter-ml:ci
+          build-args: |
+            PYTHON_IMAGE=${{ env.PYTHON_IMAGE }}
+            CDML_REPOSITORY=${{ env.CDML_REPOSITORY }}
+            CDML_REVISION=${{ env.CDML_REVISION }}
+          cache-from: type=gha,scope=chapter-ml
+          cache-to: type=gha,mode=max,scope=chapter-ml
+
+      - name: Verify chapter ML tools
+        run: scripts/verify-image.sh mediamoth/chapter-ml:ci
