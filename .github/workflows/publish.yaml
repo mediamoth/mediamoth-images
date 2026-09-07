@@ -121,7 +121,14 @@ jobs:
         with:
           cosign-release: v2.6.0
 
-      - run: cosign sign --yes "$IMAGE@${{ steps.build.outputs.digest }}"
+      - name: Sign published digest
+        run: |
+          image="$IMAGE@${{ steps.build.outputs.digest }}"
+          if [ '${{ inputs.insecure_registry }}' = true ]; then
+            cosign sign --yes --allow-insecure-registry "$image"
+          else
+            cosign sign --yes "$image"
+          fi
 
       - name: Report digest
         run: echo "Published $IMAGE@${{ steps.build.outputs.digest }}" >> "$GITHUB_STEP_SUMMARY"
