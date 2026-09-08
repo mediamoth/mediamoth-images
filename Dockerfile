@@ -21,7 +21,7 @@ ADD --chmod=755 --checksum=sha256:${GRPC_HEALTH_PROBE_SHA256} \
     https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/${GRPC_HEALTH_PROBE_VERSION}/grpc_health_probe-linux-amd64 \
     /grpc_health_probe
 
-RUN ffmpeg -version >/dev/null && /grpc_health_probe -h >/dev/null
+RUN ffmpeg -version >/dev/null && /grpc_health_probe -version >/dev/null
 
 FROM ${PYTHON_IMAGE} AS python-source
 
