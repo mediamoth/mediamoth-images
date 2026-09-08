@@ -7,11 +7,13 @@ services.
 
 | Image | Purpose | Platforms |
 | --- | --- | --- |
-| `chapter-ml` | The CDML/PyTorch runtime used by chapter-inserter | `linux/amd64` |
+| `media-runtime` | FFmpeg, rsync, OpenSSH, CA certificates, and gRPC health probe | `linux/amd64` |
+| `chapter-ml` | `media-runtime` plus Python, pinned CDML, and PyTorch/CUDA | `linux/amd64` |
+| `video-runtime` | `media-runtime` plus HandBrake | `linux/amd64` |
 
-`chapter-ml` is deliberately separate from ordinary service runtime images:
-ML/CUDA dependencies are large, have a distinct patch cadence, and are only
-needed by the chapter-inserter service.
+The Dockerfile has one target per image. `chapter-ml` and `video-runtime`
+inherit the same `media-runtime` stage, so their published images share layers
+while their service-specific dependencies remain isolated.
 
 ## Build locally
 
@@ -21,12 +23,14 @@ moving from a private registry to GHCR.
 ```sh
 export REGISTRY=registry.example.internal:5000
 export TAG=dev
+export IMAGE=video-runtime
 
 docker buildx build \
   --platform linux/amd64 \
-  --tag "$REGISTRY/mediamoth/chapter-ml:$TAG" \
-  --load \
-  chapter-ml
+  --target "$IMAGE" \
+  --tag "$REGISTRY/mediamoth/$IMAGE:$TAG" \
+  --push \
+  .
 ```
 
 For an HTTP-only registry, configure Docker and BuildKit to treat that registry
