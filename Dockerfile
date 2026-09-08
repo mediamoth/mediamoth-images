@@ -40,7 +40,9 @@ LABEL org.opencontainers.image.title="MediaMoth chapter ML runtime" \
 COPY --from=python-source /usr/local /usr/local
 
 RUN --mount=type=cache,target=/root/.cache/pip \
-    python -m pip install --no-cache-dir \
+    apt-get update && apt-get install --yes --no-install-recommends git \
+    && rm -rf /var/lib/apt/lists/* \
+    && python -m pip install --no-cache-dir \
       "torch==${TORCH_VERSION}" \
       "git+${CDML_REPOSITORY}@${CDML_REVISION}" \
     && command -v cdml \
