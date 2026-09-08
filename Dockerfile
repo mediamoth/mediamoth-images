@@ -4,8 +4,8 @@ ARG DEBIAN_IMAGE=debian:bookworm-slim
 ARG PYTHON_IMAGE=python:3.12-slim-bookworm
 FROM ${DEBIAN_IMAGE} AS media-runtime
 
-ARG GRPC_HEALTH_PROBE_VERSION=v0.4.56
-ARG GRPC_HEALTH_PROBE_SHA256=dc13e24d92cdd05d1eb9faf7192c65057dc5b52d38b01aa56188e6899604ec93
+ARG GRPC_HEALTH_PROBE_VERSION=v0.4.57
+ARG GRPC_HEALTH_PROBE_SHA256=9193773627d3ed5a0fabe37ed81264b4a8e9d5a2156ce09fb6010caaabb0f06b
 
 LABEL org.opencontainers.image.source="https://github.com/mediamoth/mediamoth-images"
 
