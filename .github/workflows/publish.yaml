@@ -102,7 +102,6 @@ jobs:
           push: true
           platforms: linux/amd64
           tags: |
-            ${{ env.IMAGE }}:${{ inputs.version }}
             ${{ env.IMAGE }}:sha-${{ github.sha }}
           build-args: |
             DEBIAN_IMAGE=${{ env.DEBIAN_IMAGE }}
@@ -125,6 +124,12 @@ jobs:
           exit-code: '1'
           ignore-unfixed: true
           severity: HIGH,CRITICAL
+
+      - name: Promote verified image to its version tag
+        run: |
+          docker buildx imagetools create \
+            --tag "$IMAGE:${{ inputs.version }}" \
+            "$IMAGE@${{ steps.build.outputs.digest }}"
 
       - name: Install Cosign
         uses: sigstore/cosign-installer@v3.10.0
