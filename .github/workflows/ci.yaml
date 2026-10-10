@@ -18,7 +18,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        image: [media-runtime, chapter-ml, video-runtime]
+        image: [media-runtime, chapter-ml, video-runtime, postgres-runtime]
     steps:
       - uses: actions/checkout@v4
 
@@ -44,9 +44,13 @@ jobs:
           context: .
           file: Dockerfile
           target: ${{ matrix.image }}
+          load: ${{ matrix.image == 'postgres-runtime' }}
+          tags: mediamoth-images/${{ matrix.image }}:ci
           build-args: |
             DEBIAN_IMAGE=${{ env.DEBIAN_IMAGE }}
             PYTHON_IMAGE=${{ env.PYTHON_IMAGE }}
+            GO_IMAGE=${{ env.GO_IMAGE }}
+            POSTGRES_IMAGE=${{ env.POSTGRES_IMAGE }}
             CDML_REPOSITORY=${{ env.CDML_REPOSITORY }}
             CDML_REVISION=${{ env.CDML_REVISION }}
             TORCH_VERSION=${{ env.TORCH_VERSION }}
@@ -54,3 +58,31 @@ jobs:
             GRPC_HEALTH_PROBE_SHA256=${{ env.GRPC_HEALTH_PROBE_SHA256 }}
           cache-from: type=gha,scope=${{ matrix.image }}
           cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+
+      - name: Test PostgreSQL image lifecycle
+        if: matrix.image == 'postgres-runtime'
+        run: scripts/test-postgres-image.sh mediamoth-images/postgres-runtime:ci
+
+  postgres-go:
+    runs-on: self-hosted
+    container: golang:1.26
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: test-admin
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test PostgreSQL initializer
+        env:
+          CGO_ENABLED: 1
+          TEST_POSTGRES_DSN: postgres://postgres:test-admin@postgres:5432/postgres?sslmode=disable
+        run: go test -race ./...
+      - name: Vet Go code
+        run: go vet ./...

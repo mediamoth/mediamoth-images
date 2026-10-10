@@ -1,0 +1,12 @@
+# Mount this file at /etc/mediamoth/postgres.yaml.
+# Override credentials using POSTGRESUSERS__0__PASSWORD, etc.
+PostgresUsers:
+  - Username: media_app
+    Password: replace-this-password
+PostgresDatabases:
+  - Name: media
+    PostgresSchemas:
+      - Name: application
+        Grant:
+          - Username: media_app
+            Perms: [USAGE, CREATE]
