@@ -89,8 +89,8 @@ jobs:
         with:
           driver-opts: network=host
           buildkitd-config-inline: |
-            [registry."${{ env.REGISTRY }}"]
-              http = ${{ inputs.insecure_registry }}
+            registry."docker.io".mirrors = ["mirror.gcr.io"]
+            registry."${{ env.REGISTRY }}".http = ${{ inputs.insecure_registry }}
 
       - name: Build and push ${{ inputs.image }}
         id: build
