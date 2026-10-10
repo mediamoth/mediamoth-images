@@ -68,7 +68,7 @@ jobs:
       run:
         working-directory: postgres-init
     runs-on: self-hosted
-    container: golang:1.26
+    container: golang:1.27
     timeout-minutes: 10
     services:
       postgres:

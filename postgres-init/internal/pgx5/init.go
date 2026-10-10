@@ -27,7 +27,7 @@ func Init(ctx context.Context, cfg config.Configuration) error {
 	defer conn.Close(context.Background())
 	for _, user := range cfg.PostgresUsers {
 		var exists bool
-		if err := conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)", string(user.Username)).Scan(&exists); err != nil {
+		if err := conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = $1)", user.Username.String()).Scan(&exists); err != nil {
 			return fmt.Errorf("check user %q: %w", user.Username, err)
 		}
 		if exists {
@@ -38,22 +38,22 @@ func Init(ctx context.Context, cfg config.Configuration) error {
 			return fmt.Errorf("prepare password for user %q: %w", user.Username, err)
 		}
 		// SCRAM verifiers contain only an ASCII prefix, integers, and base64.
-		if _, err := conn.Exec(ctx, "CREATE USER "+identifier(string(user.Username))+" WITH PASSWORD '"+string(verifier)+"'"); err != nil {
+		if _, err := conn.Exec(ctx, "CREATE USER "+identifier(user.Username.String())+" WITH PASSWORD '"+string(verifier)+"'"); err != nil {
 			return fmt.Errorf("create user %q: %w", user.Username, err)
 		}
 	}
 	for _, database := range cfg.PostgresDatabases {
 		var exists bool
-		if err := conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = $1)", string(database.Name)).Scan(&exists); err != nil {
+		if err := conn.QueryRow(ctx, "SELECT EXISTS (SELECT 1 FROM pg_database WHERE datname = $1)", database.Name.String()).Scan(&exists); err != nil {
 			return fmt.Errorf("check database %q: %w", database.Name, err)
 		}
 		if !exists {
-			if _, err := conn.Exec(ctx, "CREATE DATABASE "+identifier(string(database.Name))); err != nil {
+			if _, err := conn.Exec(ctx, "CREATE DATABASE "+identifier(database.Name.String())); err != nil {
 				return fmt.Errorf("create database %q: %w", database.Name, err)
 			}
 		}
 		dbCfg := connCfg.Copy()
-		dbCfg.Database = string(database.Name)
+		dbCfg.Database = database.Name.String()
 		if err := initSchemas(ctx, dbCfg, database); err != nil {
 			return err
 		}
@@ -71,7 +71,7 @@ func initSchemas(ctx context.Context, connCfg *pgx.ConnConfig, database config.D
 	}
 	defer conn.Close(context.Background())
 	for _, schema := range database.PostgresSchemas {
-		if _, err := conn.Exec(ctx, "CREATE SCHEMA IF NOT EXISTS "+identifier(string(schema.Name))); err != nil {
+		if _, err := conn.Exec(ctx, "CREATE SCHEMA IF NOT EXISTS "+identifier(schema.Name.String())); err != nil {
 			return fmt.Errorf("create schema %q in %q: %w", schema.Name, database.Name, err)
 		}
 		for _, grant := range schema.Grant {
@@ -79,7 +79,7 @@ func initSchemas(ctx context.Context, connCfg *pgx.ConnConfig, database config.D
 			for i, p := range grant.Perms {
 				permissions[i] = string(p)
 			}
-			statement := "GRANT " + strings.Join(permissions, ", ") + " ON SCHEMA " + identifier(string(schema.Name)) + " TO " + identifier(string(grant.Username))
+			statement := "GRANT " + strings.Join(permissions, ", ") + " ON SCHEMA " + identifier(schema.Name.String()) + " TO " + identifier(grant.Username.String())
 			if _, err := conn.Exec(ctx, statement); err != nil {
 				return fmt.Errorf("grant schema %q in %q to %q: %w", schema.Name, database.Name, grant.Username, err)
 			}
@@ -91,7 +91,7 @@ func initSchemas(ctx context.Context, connCfg *pgx.ConnConfig, database config.D
 func identifier(value string) string { return pgx.Identifier{value}.Sanitize() }
 
 func connectionConfig(c config.Connection) (*pgx.ConnConfig, error) {
-	uri := url.URL{Scheme: "postgres", User: url.UserPassword(string(c.Username), string(c.Password)), Path: "/" + string(c.Database)}
+	uri := url.URL{Scheme: "postgres", User: url.UserPassword(c.Username.String(), string(c.Password)), Path: "/" + c.Database.String()}
 	query := url.Values{"host": {string(c.Host)}, "port": {strconv.Itoa(int(c.Port))}, "sslmode": {string(c.SSLMode)}, "connect_timeout": {"10"}}
 	uri.RawQuery = query.Encode()
 	cfg, err := pgx.ParseConfig(uri.String())

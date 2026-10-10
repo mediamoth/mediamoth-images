@@ -16,6 +16,10 @@ type HostName string
 type Port uint16
 type SSLMode string
 
+func (name Username) String() string     { return string(name) }
+func (name DatabaseName) String() string { return string(name) }
+func (name SchemaName) String() string   { return string(name) }
+
 const (
 	Usage       Permission = "USAGE"
 	Create      Permission = "CREATE"
@@ -66,10 +70,10 @@ func (c Configuration) Validate() error {
 	if conn.Port == 0 {
 		return fmt.Errorf("invalid connection port")
 	}
-	if err := validName(string(conn.Username)); err != nil {
+	if err := validName(conn.Username); err != nil {
 		return fmt.Errorf("connection username: %w", err)
 	}
-	if err := validName(string(conn.Database)); err != nil {
+	if err := validName(conn.Database); err != nil {
 		return fmt.Errorf("connection database: %w", err)
 	}
 	if strings.ContainsRune(string(conn.Password), 0) {
@@ -82,7 +86,7 @@ func (c Configuration) Validate() error {
 	}
 	users := make(map[Username]bool)
 	for i, u := range c.PostgresUsers {
-		if err := validName(string(u.Username)); err != nil {
+		if err := validName(u.Username); err != nil {
 			return fmt.Errorf("PostgresUsers[%d] username: %w", i, err)
 		}
 		if users[u.Username] {
@@ -95,7 +99,7 @@ func (c Configuration) Validate() error {
 	}
 	databases := make(map[DatabaseName]bool)
 	for i, d := range c.PostgresDatabases {
-		if err := validName(string(d.Name)); err != nil {
+		if err := validName(d.Name); err != nil {
 			return fmt.Errorf("PostgresDatabases[%d]: %w", i, err)
 		}
 		if databases[d.Name] {
@@ -104,7 +108,7 @@ func (c Configuration) Validate() error {
 		databases[d.Name] = true
 		schemas := make(map[SchemaName]bool)
 		for j, s := range d.PostgresSchemas {
-			if err := validName(string(s.Name)); err != nil {
+			if err := validName(s.Name); err != nil {
 				return fmt.Errorf("PostgresDatabases[%d].PostgresSchemas[%d]: %w", i, j, err)
 			}
 			if schemas[s.Name] {
@@ -131,7 +135,8 @@ func (c Configuration) Validate() error {
 	return nil
 }
 
-func validName(name string) error {
+func validName(value fmt.Stringer) error {
+	name := value.String()
 	if strings.TrimSpace(name) == "" || len(name) > 63 || strings.ContainsRune(name, 0) || !utf8.ValidString(name) {
 		return fmt.Errorf("invalid name: must be nonempty UTF-8, at most 63 bytes, without NUL")
 	}

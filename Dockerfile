@@ -2,7 +2,7 @@
 
 ARG DEBIAN_IMAGE=debian:bookworm-slim
 ARG PYTHON_IMAGE=python:3.12-slim-bookworm
-ARG GO_IMAGE=golang:1.26
+ARG GO_IMAGE=golang:1.27
 ARG POSTGRES_IMAGE=postgres:18-alpine
 FROM ${DEBIAN_IMAGE} AS media-runtime
 
