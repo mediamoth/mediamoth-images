@@ -7,7 +7,7 @@ on:
         description: Image target to publish
         required: true
         type: choice
-        options: [media-runtime, chapter-ml, video-runtime]
+        options: [media-runtime, chapter-ml, video-runtime, postgres-runtime]
       version:
         description: Immutable image version, for example 1.0.0
         required: true
@@ -106,6 +106,8 @@ jobs:
           build-args: |
             DEBIAN_IMAGE=${{ env.DEBIAN_IMAGE }}
             PYTHON_IMAGE=${{ env.PYTHON_IMAGE }}
+            GO_IMAGE=${{ env.GO_IMAGE }}
+            POSTGRES_IMAGE=${{ env.POSTGRES_IMAGE }}
             CDML_REPOSITORY=${{ env.CDML_REPOSITORY }}
             CDML_REVISION=${{ env.CDML_REVISION }}
             TORCH_VERSION=${{ env.TORCH_VERSION }}

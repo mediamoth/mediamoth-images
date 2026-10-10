@@ -2,6 +2,8 @@
 
 ARG DEBIAN_IMAGE=debian:bookworm-slim
 ARG PYTHON_IMAGE=python:3.12-slim-bookworm
+ARG GO_IMAGE=golang:1.27
+ARG POSTGRES_IMAGE=postgres:18-alpine
 FROM ${DEBIAN_IMAGE} AS media-runtime
 
 ARG GRPC_HEALTH_PROBE_VERSION=v0.4.57
@@ -62,3 +64,28 @@ RUN apt-get update && apt-get install --yes --no-install-recommends \
     && HandBrakeCLI --version >/dev/null
 
 WORKDIR /app
+
+FROM ${GO_IMAGE} AS postgres-build
+
+WORKDIR /src
+COPY postgres-init/go.mod postgres-init/go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod go mod download
+COPY postgres-init/main.go ./
+COPY postgres-init/cmd ./cmd
+COPY postgres-init/internal ./internal
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go test ./... \
+    && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/postgres-init .
+
+FROM ${POSTGRES_IMAGE} AS postgres-runtime
+
+LABEL org.opencontainers.image.source="https://github.com/mediamoth/mediamoth-images" \
+      org.opencontainers.image.title="MediaMoth PostgreSQL runtime" \
+      org.opencontainers.image.description="PostgreSQL 18 with additive resource initialization on every startup"
+
+COPY --from=postgres-build /out/postgres-init /usr/local/bin/postgres-init
+COPY --chmod=755 scripts/postgres-entrypoint.sh /usr/local/bin/mediamoth-postgres-entrypoint.sh
+
+ENTRYPOINT ["mediamoth-postgres-entrypoint.sh"]
+CMD ["postgres"]
