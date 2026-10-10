@@ -78,6 +78,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go test ./... \
     && CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/postgres-init .
 
+# Rebuild the base image's gosu 1.19 with the patched Go toolchain.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOBIN=/out go install -trimpath -ldflags="-s -w" \
+      github.com/tianon/gosu@6456aaa0f3c854d199d0f037f068eb97515b7513
+
 FROM ${POSTGRES_IMAGE} AS postgres-runtime
 
 LABEL org.opencontainers.image.source="https://github.com/mediamoth/mediamoth-images" \
@@ -85,6 +91,7 @@ LABEL org.opencontainers.image.source="https://github.com/mediamoth/mediamoth-im
       org.opencontainers.image.description="PostgreSQL 18 with additive resource initialization on every startup"
 
 COPY --from=postgres-build /out/postgres-init /usr/local/bin/postgres-init
+COPY --from=postgres-build /out/gosu /usr/local/bin/gosu
 COPY --chmod=755 scripts/postgres-entrypoint.sh /usr/local/bin/mediamoth-postgres-entrypoint.sh
 
 ENTRYPOINT ["mediamoth-postgres-entrypoint.sh"]
