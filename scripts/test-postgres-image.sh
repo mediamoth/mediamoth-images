@@ -20,6 +20,9 @@ PostgresUsers:
     Password: initial-password
 PostgresDatabases:
   - Name: media
+    Grant:
+      - Username: app
+        Perms: [CREATE]
     PostgresSchemas:
       - Name: application
         Grant:
@@ -74,10 +77,12 @@ start
 ready
 assert_sql t "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='app')"
 assert_sql t "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname='media')"
+assert_sql t "SELECT has_database_privilege('app','media','CREATE')"
 assert_sql t "SELECT has_schema_privilege('app','application','USAGE') AND has_schema_privilege('app','application','CREATE')" media
 assert_sql t "SELECT to_regclass('bootstrap_hook') IS NOT NULL"
 docker exec --env PGPASSWORD=overridden-password "$container" \
-  psql -h 127.0.0.1 -X -At --set ON_ERROR_STOP=1 --username app --dbname media --command 'SELECT 1' >/dev/null
+  psql -h 127.0.0.1 -X -At --set ON_ERROR_STOP=1 --username app --dbname media \
+    --command 'CREATE SCHEMA IF NOT EXISTS application; CREATE SCHEMA migration_schema' >/dev/null
 # A rejected role must not put the application's plaintext password in logs.
 cat > "$fixture_dir/rejected-role.yaml" <<'YAML'
 PostgresConnection:
@@ -101,6 +106,7 @@ fi
 original_password=$(sql "SELECT rolpassword FROM pg_authid WHERE rolname='app'")
 sql 'CREATE TABLE application.existing_table (id integer)' media >/dev/null
 assert_sql f "SELECT has_table_privilege('app','application.existing_table','SELECT')" media
+sql 'REVOKE CREATE ON DATABASE media FROM app' >/dev/null
 
 docker stop --time 10 "$container" >/dev/null
 docker rm "$container" >/dev/null
@@ -112,6 +118,11 @@ PostgresUsers:
     Password: added-password
 PostgresDatabases:
   - Name: media
+    Grant:
+      - Username: app
+        Perms: [CREATE]
+      - Username: added-user
+        Perms: [CREATE]
     PostgresSchemas:
       - Name: application
         Grant:
@@ -122,6 +133,9 @@ PostgresDatabases:
           - Username: added-user
             Perms: [ALL]
   - Name: added-database
+    Grant:
+      - Username: added-user
+        Perms: [ALL]
     PostgresSchemas: []
 YAML
 start postgres -c unix_socket_directories=/tmp
@@ -129,13 +143,17 @@ ready
 assert_sql "$original_password" "SELECT rolpassword FROM pg_authid WHERE rolname='app'"
 assert_sql t "SELECT EXISTS(SELECT 1 FROM pg_roles WHERE rolname='added-user')"
 assert_sql t "SELECT EXISTS(SELECT 1 FROM pg_database WHERE datname='added-database')"
+assert_sql t "SELECT has_database_privilege('app','media','CREATE') AND has_database_privilege('added-user','media','CREATE')"
+assert_sql t "SELECT has_database_privilege('added-user','added-database','CREATE')"
 assert_sql t "SELECT has_schema_privilege('added-user','added-schema','CREATE')" media
 assert_sql f "SELECT has_table_privilege('app','application.existing_table','SELECT')" media
 assert_sql t "SELECT to_regclass('bootstrap_hook') IS NOT NULL"
 
 # Repeated startup must preserve resources and not rerun the first-boot SQL hook.
+sql 'REVOKE CREATE ON DATABASE media FROM app' >/dev/null
 docker restart --time 10 "$container" >/dev/null
 ready
+assert_sql t "SELECT has_database_privilege('app','media','CREATE')"
 assert_sql t "SELECT has_schema_privilege('added-user','added-schema','USAGE')" media
 
 docker stop --time 10 "$container" >/dev/null

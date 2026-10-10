@@ -5,6 +5,9 @@ PostgresUsers:
     Password: replace-this-password
 PostgresDatabases:
   - Name: media
+    Grant:
+      - Username: media_app
+        Perms: [CREATE]
     PostgresSchemas:
       - Name: application
         Grant:

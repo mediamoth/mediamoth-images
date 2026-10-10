@@ -98,3 +98,54 @@ func TestLoadMalformedYAMLDoesNotExposePassword(t *testing.T) {
 		t.Fatal("parser error exposed password")
 	}
 }
+
+func TestLoadDatabaseGrants(t *testing.T) {
+	for _, tt := range []struct {
+		name, username, perms, want string
+	}{
+		{"create", "app", "[CREATE]", ""},
+		{"connect", "app", "[CONNECT]", ""},
+		{"temporary", "app", "[TEMPORARY]", ""},
+		{"all", "app", "[ALL]", ""},
+		{"multiple", "app", "[CONNECT, CREATE, TEMPORARY]", ""},
+		{"unknown user", "missing", "[CREATE]", "not declared"},
+		{"empty permissions", "app", "[]", "permissions required"},
+		{"schema permission", "app", "[USAGE]", "invalid database permission"},
+		{"all with schema permission", "app", "[ALL, USAGE]", "invalid database permission"},
+		{"table permission", "app", "[SELECT]", "invalid database permission"},
+		{"lowercase permission", "app", "[create]", "invalid database permission"},
+		{"SQL in permission", "app", "['CREATE; DROP DATABASE media']", "invalid database permission"},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			data := strings.Replace(fixture, "  - Name: media\n", "  - Name: media\n    Grant:\n      - Username: "+tt.username+"\n        Perms: "+tt.perms+"\n", 1)
+			_, err := Load(writeConfig(t, data))
+			if tt.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+			} else if err == nil || !strings.Contains(err.Error(), tt.want) {
+				t.Fatalf("got %v; want %q", err, tt.want)
+			}
+		})
+	}
+}
+
+func TestLoadDatabaseGrantIndexedOverride(t *testing.T) {
+	// USAGE is invalid at database scope until the override replaces it.
+	data := strings.Replace(fixture, "  - Name: media\n", "  - Name: media\n    Grant:\n      - Username: app\n        Perms: [USAGE]\n", 1)
+	t.Setenv("POSTGRESDATABASES__0__GRANT__0__PERMS__0", "CREATE")
+	if _, err := Load(writeConfig(t, data)); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLoadRejectsDatabasePermissionsOnSchema(t *testing.T) {
+	for _, permission := range []string{"CONNECT", "TEMPORARY", "ALL, CONNECT", "ALL, TEMPORARY"} {
+		t.Run(permission, func(t *testing.T) {
+			data := strings.Replace(fixture, "[USAGE, CREATE]", "["+permission+"]", 1)
+			if _, err := Load(writeConfig(t, data)); err == nil {
+				t.Fatal("database-only permission accepted on schema")
+			}
+		})
+	}
+}
