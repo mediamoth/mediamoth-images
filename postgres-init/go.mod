@@ -1,4 +1,4 @@
-module github.com/mediamoth/mediamoth-images
+module github.com/mediamoth/mediamoth-images/postgres-init
 
 go 1.26.0
 

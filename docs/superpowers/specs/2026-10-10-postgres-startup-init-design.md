@@ -4,7 +4,7 @@ Build a PostgreSQL 18 Alpine image in this repository that ensures declared user
 
 ## Interface and configuration
 
-The executable is `postgres-init`, with one command: `init --config /etc/mediamoth/postgres.yaml`. Cobra owns command wiring; Viper loads YAML and environment overrides. The layout is `cmd/root.go`, `cmd/init.go`, `internal/config/configuration.go`, and `internal/pgx5`. Use named primitive types for resource names, credentials, connection values, permissions, and paths.
+The executable is `postgres-init`, with one command: `init --config /etc/mediamoth/postgres.yaml`. Cobra owns command wiring; Viper loads YAML and environment overrides. The layout is `postgres-init/cmd/root.go`, `postgres-init/cmd/init.go`, `postgres-init/internal/config/configuration.go`, and `postgres-init/internal/pgx5`. Use named primitive types for resource names, credentials, connection values, permissions, and paths.
 
 YAML uses `PostgresUsers: [{Username, Password}]` and `PostgresDatabases: [{Name, PostgresSchemas: [{Name, Grant: [{Username, Perms}]}]}]`. `PostgresConnection` defines Host, Port, Username, Password, Database, and SSLMode. Standalone defaults connect through `/var/run/postgresql`, port 5432, user/database postgres, SSL disabled. Indexed overrides use uppercase tagged paths separated by `__`, e.g. `POSTGRESUSERS__0__PASSWORD`. Override existing YAML entries, including individual permission entries; do not silently append list items. Reject unknown YAML fields and malformed overrides of known roots.
 

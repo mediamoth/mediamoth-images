@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/mediamoth/mediamoth-images/internal/config"
+	"github.com/mediamoth/mediamoth-images/postgres-init/internal/config"
 )
 
 func TestInitPostgres(t *testing.T) {

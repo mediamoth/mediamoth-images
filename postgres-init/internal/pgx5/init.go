@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/mediamoth/mediamoth-images/internal/config"
+	"github.com/mediamoth/mediamoth-images/postgres-init/internal/config"
 )
 
 func Init(ctx context.Context, cfg config.Configuration) error {

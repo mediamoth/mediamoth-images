@@ -7,7 +7,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/mediamoth/mediamoth-images/cmd"
+	"github.com/mediamoth/mediamoth-images/postgres-init/cmd"
 )
 
 func main() {

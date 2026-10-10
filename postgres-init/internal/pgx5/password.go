@@ -5,7 +5,7 @@ import (
 	"encoding/base64"
 	"fmt"
 
-	"github.com/mediamoth/mediamoth-images/internal/config"
+	"github.com/mediamoth/mediamoth-images/postgres-init/internal/config"
 	"github.com/xdg-go/scram"
 )
 

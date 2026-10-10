@@ -64,6 +64,9 @@ jobs:
         run: scripts/test-postgres-image.sh mediamoth-images/postgres-runtime:ci
 
   postgres-go:
+    defaults:
+      run:
+        working-directory: postgres-init
     runs-on: self-hosted
     container: golang:1.26
     timeout-minutes: 10

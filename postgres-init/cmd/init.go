@@ -5,8 +5,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/mediamoth/mediamoth-images/internal/config"
-	"github.com/mediamoth/mediamoth-images/internal/pgx5"
+	"github.com/mediamoth/mediamoth-images/postgres-init/internal/config"
+	"github.com/mediamoth/mediamoth-images/postgres-init/internal/pgx5"
 	"github.com/spf13/cobra"
 )
 

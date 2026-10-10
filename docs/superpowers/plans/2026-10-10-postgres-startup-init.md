@@ -25,21 +25,21 @@
 
 ### Task 1: Configuration and loading
 
-**Files:** go.mod, internal/config/configuration.go, internal/config/load.go, internal/config/configuration_test.go, internal/config/load_test.go.
+**Files:** postgres-init/go.mod, postgres-init/internal/config/configuration.go, postgres-init/internal/config/load.go, postgres-init/internal/config/configuration_test.go, postgres-init/internal/config/load_test.go.
 **Interfaces:** `Load(path ConfigPath) (Configuration, error)` and `(Configuration).Validate() error`.
 - [x] Write tests for valid configuration, unknown grant users, invalid permissions, duplicates, invalid names, empty passwords, unknown YAML fields, and indexed overrides.
-- [x] Run `go test ./internal/config` and observe missing implementation.
+- [x] Run `cd postgres-init && go test ./internal/config` and observe missing implementation.
 - [x] Implement named types, validation, Viper loading, and indexed env binding.
-- [x] Run `go test ./internal/config`; expected PASS.
+- [x] Run `cd postgres-init && go test ./internal/config`; expected PASS.
 
 ### Task 2: CLI and provisioning
 
-**Files:** main.go, cmd/root.go, cmd/init.go, internal/pgx5/init.go, internal/pgx5/password.go, internal/pgx5/init_test.go.
+**Files:** postgres-init/main.go, postgres-init/cmd/root.go, postgres-init/cmd/init.go, postgres-init/internal/pgx5/init.go, postgres-init/internal/pgx5/password.go, postgres-init/internal/pgx5/init_test.go.
 **Interfaces:** `pgx5.Init(ctx context.Context, cfg config.Configuration) error`, `cmd.Execute(ctx context.Context) error`.
 - [x] Write PostgreSQL integration tests for repeated creation, additive resources, retained password and ownership, quoted identifiers/passwords, and schema-only grants.
 - [x] Run tests against a dedicated disposable PostgreSQL server; observe missing implementation.
 - [x] Implement catalog existence checks, quoted DDL, schema grants, and Cobra command wiring.
-- [x] Run `go test ./...` against the disposable server; expected PASS.
+- [x] Run `cd postgres-init && go test ./...` against the disposable server; expected PASS.
 
 ### Task 3: Image lifecycle and repository integration
 
@@ -49,7 +49,7 @@
 - [x] Run image test with stock postgres to observe absent provisioning.
 - [x] Implement wrapper and Go build target; wire CI/publishing and documentation.
 - [x] Build target and run image tests; expected PASS.
-- [x] Run `go test -race ./...`, `go vet ./...`, `git diff --check`, and shell syntax checks; expected PASS.
+- [x] Run `cd postgres-init && go test -race ./...`, `cd postgres-init && go vet ./...`, `git diff --check`, and shell syntax checks; expected PASS.
 - [x] Request an independent whole-change review and resolve material findings.
 
 ## Verified review fixes

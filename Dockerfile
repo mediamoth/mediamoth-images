@@ -68,11 +68,11 @@ WORKDIR /app
 FROM ${GO_IMAGE} AS postgres-build
 
 WORKDIR /src
-COPY go.mod go.sum ./
+COPY postgres-init/go.mod postgres-init/go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
-COPY main.go ./
-COPY cmd ./cmd
-COPY internal ./internal
+COPY postgres-init/main.go ./
+COPY postgres-init/cmd ./cmd
+COPY postgres-init/internal ./internal
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     go test ./... \

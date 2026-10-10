@@ -141,7 +141,8 @@ Changing a configured password affects creation of a missing user only.
 The Go executable also works against a running PostgreSQL server:
 
 ```sh
-go run . init --config examples/postgres.yaml
+cd postgres-init
+go run . init --config ../examples/postgres.yaml
 ```
 
 For standalone use, add an optional connection section:
@@ -165,11 +166,12 @@ credentials so provisioning runs against the local cluster.
 To verify changes:
 
 ```sh
+cd postgres-init
 go test ./...
 go vet ./...
 # Include real catalog/SQL tests against a disposable database:
 TEST_POSTGRES_DSN='postgres://postgres:password@localhost:5432/postgres?sslmode=disable' go test -race ./...
-scripts/test-postgres-image.sh mediamoth/postgres-runtime:dev
+../scripts/test-postgres-image.sh mediamoth/postgres-runtime:dev
 ```
 
 CI tests the Go code against PostgreSQL 18 and runs the image lifecycle test
