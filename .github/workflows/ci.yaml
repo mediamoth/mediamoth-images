@@ -68,13 +68,14 @@ jobs:
       run:
         working-directory: postgres-init
     runs-on: self-hosted
-    container: golang:1.27
     timeout-minutes: 10
     services:
       postgres:
         image: postgres:18-alpine
         env:
           POSTGRES_PASSWORD: test-admin
+        ports:
+          - 5432/tcp
         options: >-
           --health-cmd "pg_isready -U postgres"
           --health-interval 5s
@@ -82,10 +83,15 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v4
-      - name: Test PostgreSQL initializer
+      - name: Test and vet PostgreSQL initializer
         env:
-          CGO_ENABLED: 1
-          TEST_POSTGRES_DSN: postgres://postgres:test-admin@postgres:5432/postgres?sslmode=disable
-        run: go test -race ./...
-      - name: Vet Go code
-        run: go vet ./...
+          TEST_POSTGRES_DSN: postgres://postgres:test-admin@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/postgres?sslmode=disable
+        run: |
+          docker run --rm \
+            --network host \
+            --mount "type=bind,src=$GITHUB_WORKSPACE/postgres-init,dst=/src,readonly" \
+            --workdir /src \
+            --env CGO_ENABLED=1 \
+            --env TEST_POSTGRES_DSN \
+            golang:1.27 \
+            sh -ec 'go test -race ./...; go vet ./...'
