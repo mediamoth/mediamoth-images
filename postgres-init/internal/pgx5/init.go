@@ -52,6 +52,12 @@ func Init(ctx context.Context, cfg config.Configuration) error {
 				return fmt.Errorf("create database %q: %w", database.Name, err)
 			}
 		}
+		for _, grant := range database.Grant {
+			statement := "GRANT " + grantPermissions(grant.Perms) + " ON DATABASE " + identifier(database.Name.String()) + " TO " + identifier(grant.Username.String())
+			if _, err := conn.Exec(ctx, statement); err != nil {
+				return fmt.Errorf("grant database %q to %q: %w", database.Name, grant.Username, err)
+			}
+		}
 		dbCfg := connCfg.Copy()
 		dbCfg.Database = database.Name.String()
 		if err := initSchemas(ctx, dbCfg, database); err != nil {
@@ -75,17 +81,25 @@ func initSchemas(ctx context.Context, connCfg *pgx.ConnConfig, database config.D
 			return fmt.Errorf("create schema %q in %q: %w", schema.Name, database.Name, err)
 		}
 		for _, grant := range schema.Grant {
-			permissions := make([]string, len(grant.Perms))
-			for i, p := range grant.Perms {
-				permissions[i] = string(p)
-			}
-			statement := "GRANT " + strings.Join(permissions, ", ") + " ON SCHEMA " + identifier(schema.Name.String()) + " TO " + identifier(grant.Username.String())
+			statement := "GRANT " + grantPermissions(grant.Perms) + " ON SCHEMA " + identifier(schema.Name.String()) + " TO " + identifier(grant.Username.String())
 			if _, err := conn.Exec(ctx, statement); err != nil {
 				return fmt.Errorf("grant schema %q in %q to %q: %w", schema.Name, database.Name, grant.Username, err)
 			}
 		}
 	}
 	return nil
+}
+
+func grantPermissions(permissions []config.Permission) string {
+	values := make([]string, len(permissions))
+	for i, permission := range permissions {
+		// PostgreSQL requires ALL to stand alone, even with redundant privileges.
+		if permission == config.All {
+			return string(config.All)
+		}
+		values[i] = string(permission)
+	}
+	return strings.Join(values, ", ")
 }
 
 func identifier(value string) string { return pgx.Identifier{value}.Sanitize() }

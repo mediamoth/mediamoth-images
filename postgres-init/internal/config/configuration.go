@@ -23,6 +23,8 @@ func (name SchemaName) String() string   { return string(name) }
 const (
 	Usage       Permission = "USAGE"
 	Create      Permission = "CREATE"
+	Connect     Permission = "CONNECT"
+	Temporary   Permission = "TEMPORARY"
 	All         Permission = "ALL"
 	DefaultPath ConfigPath = "/etc/mediamoth/postgres.yaml"
 )
@@ -44,6 +46,7 @@ type Connection struct {
 
 type Database struct {
 	Name            DatabaseName `mapstructure:"Name" yaml:"Name"`
+	Grant           []Grant      `mapstructure:"Grant" yaml:"Grant"`
 	PostgresSchemas []Schema     `mapstructure:"PostgresSchemas" yaml:"PostgresSchemas"`
 }
 
@@ -106,6 +109,21 @@ func (c Configuration) Validate() error {
 			return fmt.Errorf("duplicate database name %q", d.Name)
 		}
 		databases[d.Name] = true
+		for j, g := range d.Grant {
+			if !users[g.Username] {
+				return fmt.Errorf("grant username %q is not declared in PostgresUsers", g.Username)
+			}
+			if len(g.Perms) == 0 {
+				return fmt.Errorf("database %q grant %d: permissions required", d.Name, j)
+			}
+			for _, p := range g.Perms {
+				switch p {
+				case Create, Connect, Temporary, All:
+				default:
+					return fmt.Errorf("database %q: invalid database permission %q", d.Name, p)
+				}
+			}
+		}
 		schemas := make(map[SchemaName]bool)
 		for j, s := range d.PostgresSchemas {
 			if err := validName(s.Name); err != nil {

@@ -75,12 +75,14 @@ registry and optional credentials for the current self-hosted registry.
 ## PostgreSQL runtime
 
 `postgres-runtime` creates missing users, databases, and schemas and applies
-schema grants on **every container startup**, including with an existing data
-volume. Initialization finishes before PostgreSQL starts accepting network
-connections. Errors fail startup. Existing passwords, ownership, and extra
+database and schema grants on **every container startup**, including with an
+existing data volume. Initialization finishes before PostgreSQL starts accepting
+network connections. Errors fail startup. Existing passwords, ownership, and extra
 resources are preserved; removing configuration does not remove resources or
-revoke permissions. Permissions apply only to schemas, not tables, sequences,
-or future objects. Use `USAGE`, `CREATE`, or `ALL` (all schema privileges).
+revoke permissions. Database grants support `CREATE`, `CONNECT`, `TEMPORARY`,
+and `ALL` (all database privileges). Schema grants support `USAGE`, `CREATE`,
+and `ALL` (all schema privileges). Grants do not give access to tables,
+sequences, or future objects.
 
 Build and run with a mounted configuration:
 
@@ -110,12 +112,22 @@ PostgresUsers:
     Password: replace-this-password
 PostgresDatabases:
   - Name: media
+    Grant:
+      - Username: media_app
+        Perms: [CREATE]
     PostgresSchemas:
       - Name: application
         Grant:
           - Username: media_app
             Perms: [USAGE, CREATE]
 ```
+
+The database-level `Grant` list is optional; existing configurations continue
+to work. Database `CREATE` lets migration tools run `CREATE SCHEMA IF NOT EXISTS`,
+including when a schema already exists. Schema `CREATE` allows creating objects
+inside that schema. Database grants are applied after users and databases exist,
+before schema initialization, and are reapplied on every startup. PostgreSQL's
+existing default privileges are preserved.
 
 Every grant username must appear in `PostgresUsers`. Names must be unique in
 their scope, valid UTF-8, and at most 63 bytes; user passwords must be nonempty.
@@ -130,6 +142,7 @@ zero-based list indices:
 ```sh
 POSTGRESUSERS__0__PASSWORD=app-password
 POSTGRESDATABASES__0__NAME=media
+POSTGRESDATABASES__0__GRANT__0__PERMS__0=CREATE
 POSTGRESDATABASES__0__POSTGRESSCHEMAS__0__GRANT__0__PERMS__1=ALL
 ```
 
@@ -176,4 +189,4 @@ TEST_POSTGRES_DSN='postgres://postgres:password@localhost:5432/postgres?sslmode=
 
 CI tests the Go code against PostgreSQL 18 and runs the image lifecycle test
 covering initial provisioning, updated configuration on an existing volume,
-restarts, bootstrap secrets, schema-only grants, and startup failures.
+restarts, bootstrap secrets, database and schema grants, and startup failures.
